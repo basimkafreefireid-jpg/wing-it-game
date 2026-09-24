@@ -1,0 +1,270 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<meta name="theme-color" content="#78d5ff">
+<meta name="description" content="WING IT! — The Extremely Unqualified Bird. A funny one-button flying game.">
+<title>WING IT! — The Extremely Unqualified Bird</title>
+<style>
+:root{--ink:#17324d;--panel:rgba(255,255,255,.9);--shadow:0 14px 40px rgba(20,50,80,.18)}
+*{box-sizing:border-box}
+html,body{margin:0;width:100%;height:100%;overflow:hidden;font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;background:#78d5ff;color:var(--ink)}
+body{touch-action:none}
+#app{width:100%;height:100%;display:grid;place-items:center}
+#gameWrap{position:relative;width:min(100vw,900px);height:min(100vh,700px);aspect-ratio:16/10;overflow:hidden;background:#8edcff;box-shadow:var(--shadow);border-radius:0}
+canvas{position:absolute;inset:0;width:100%;height:100%;display:block}
+.hud{position:absolute;inset:0;pointer-events:none}
+.topbar{position:absolute;top:max(12px,env(safe-area-inset-top));left:12px;right:12px;display:flex;justify-content:space-between;align-items:flex-start}
+.scorebox{font-weight:900;font-size:clamp(22px,4vw,38px);text-shadow:0 2px 0 rgba(255,255,255,.8)}
+.pill{pointer-events:auto;border:0;border-radius:999px;background:rgba(255,255,255,.82);color:var(--ink);font-weight:800;padding:9px 13px;cursor:pointer;box-shadow:0 4px 14px rgba(0,0,0,.1)}
+#overlay{position:absolute;inset:0;display:grid;place-items:center;padding:20px;background:rgba(20,60,90,.16);backdrop-filter:blur(3px)}
+.panel{width:min(92%,520px);background:var(--panel);border:2px solid rgba(255,255,255,.75);border-radius:28px;padding:28px;text-align:center;box-shadow:var(--shadow)}
+h1{margin:0 0 4px;font-size:clamp(38px,8vw,76px);line-height:.95;letter-spacing:-3px}
+h2{margin:0 0 8px;font-size:clamp(26px,5vw,44px)}
+.subtitle{margin:8px auto 18px;max-width:430px;font-weight:650;opacity:.82}
+button.big{border:0;border-radius:18px;padding:15px 22px;font-size:18px;font-weight:900;background:#ffcf4a;color:#553b00;box-shadow:0 6px 0 #dcae2d;cursor:pointer;margin:5px}
+button.big:active{transform:translateY(4px);box-shadow:0 2px 0 #dcae2d}
+.small{font-size:13px;opacity:.65;margin-top:15px}
+.stats{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:15px 0}
+.stat{background:#eef8ff;border-radius:16px;padding:12px}.stat b{display:block;font-size:25px}
+.hidden{display:none!important}
+.badges{display:grid;grid-template-columns:1fr 1fr;gap:8px;text-align:left;margin:15px 0}
+.badge{padding:10px;border-radius:14px;background:#eef8ff;font-size:13px}.badge.done{background:#fff0a8}
+#pauseBtn{margin-left:auto}
+#levelLabel{font-size:13px;font-weight:900;background:rgba(255,255,255,.75);padding:7px 10px;border-radius:999px;margin-top:6px}
+@media (max-width:600px){
+ #gameWrap{width:100vw;height:100vh;aspect-ratio:auto;border-radius:0}
+ .panel{padding:22px;border-radius:22px}
+ .badges{grid-template-columns:1fr}
+}
+</style>
+</head>
+<body>
+<div id="app">
+  <div id="gameWrap">
+    <canvas id="game" aria-label="WING IT game"></canvas>
+    <div class="hud">
+      <div class="topbar">
+        <div>
+          <div class="scorebox"><span id="score">0</span></div>
+          <div id="levelLabel">TRAINING YARD</div>
+        </div>
+        <div>
+          <button id="soundBtn" class="pill" aria-label="Toggle sound">🔊</button>
+          <button id="pauseBtn" class="pill hidden" aria-label="Pause game">Ⅱ</button>
+        </div>
+      </div>
+    </div>
+    <div id="overlay">
+      <div id="menu" class="panel">
+        <h1>WING IT!</h1>
+        <div style="font-size:24px">🐦💨</div>
+        <p class="subtitle">A completely qualified bird would never survive this game.</p>
+        <button class="big" id="playBtn">PLAY</button>
+        <button class="big" id="charsBtn">CHARACTERS</button>
+        <button class="big" id="achBtn">ACHIEVEMENTS</button>
+        <p class="small">Tap / click / SPACE to flap • Avoid everything • Try not to embarrass Dave</p>
+      </div>
+      <div id="gameover" class="panel hidden">
+        <h2 id="gameoverTitle">YOU GOT BONKED!</h2>
+        <p id="quip" class="subtitle">That was intentional.</p>
+        <div class="stats">
+          <div class="stat">Score<b id="finalScore">0</b></div>
+          <div class="stat">Best<b id="bestScore">0</b></div>
+          <div class="stat">Level<b id="finalLevel">1</b></div>
+          <div class="stat">Flaps<b id="finalFlaps">0</b></div>
+        </div>
+        <button class="big" id="retryBtn">FLAP AGAIN</button>
+        <button class="big" id="menuBtn">MENU</button>
+      </div>
+      <div id="characters" class="panel hidden">
+        <h2>Bird Department</h2>
+        <p class="subtitle">All birds have exactly the same physics. They are equally unqualified.</p>
+        <div class="badges">
+          <div class="badge done">🐦 <b>Dave the Pigeon</b><br>Available now</div>
+          <div class="badge" id="duckBadge">🦆 <b>Duck</b><br>Reach 20 points</div>
+          <div class="badge" id="chickenBadge">🐔 <b>Chicken</b><br>Reach 50 points</div>
+          <div class="badge" id="gooseBadge">🪿 <b>Goose</b><br>Reach 100 points</div>
+        </div>
+        <button class="big" id="backChars">BACK</button>
+      </div>
+      <div id="achievements" class="panel hidden">
+        <h2>Achievements</h2>
+        <div class="badges" id="achievementList"></div>
+        <button class="big" id="backAch">BACK</button>
+      </div>
+      <div id="paused" class="panel hidden">
+        <h2>PAUSED</h2>
+        <p class="subtitle">Dave is taking a professional break.</p>
+        <button class="big" id="resumeBtn">RESUME</button>
+        <button class="big" id="quitBtn">QUIT</button>
+      </div>
+    </div>
+  </div>
+</div>
+<script>
+(() => {
+"use strict";
+const canvas=document.getElementById("game"),ctx=canvas.getContext("2d");
+const $=id=>document.getElementById(id);
+let W=900,H=560,dpr=1,last=0,running=false,paused=false,score=0,best=+(localStorage.wingBest||0),flaps=0;
+let sound=localStorage.wingSound!=="0", character="pigeon", level=1, levelName="TRAINING YARD";
+let bird, obstacles=[], particles=[], clouds=[], t=0, spawnTimer=0, bgHue=195;
+const quips=["That was intentional.","I blame the wind.","Nobody saw that.","Professional birding.","Gravity cheated.","The obstacle moved. Probably.","I meant to do that.","Dave has filed a complaint.","Absolutely calculated.","Bird.exe has stopped working."];
+const achievements=[
+["first","First Flap","Complete your first flap.",s=>s.flaps>=1],
+["crash10","Bird Brain","Crash 10 times.",s=>s.crashes>=10],
+["score20","Duck Commander","Reach 20 points.",s=>s.best>=20],
+["score50","Almost Professional","Reach 50 points.",s=>s.best>=50],
+["score100","Sky Menace","Reach 100 points.",s=>s.best>=100],
+["instant","WHY DID I DO THAT?","Crash with fewer than 2 points.",s=>s.lastScore<2]
+];
+let stats=JSON.parse(localStorage.wingStats||'{"flaps":0,"crashes":0,"best":0,"lastScore":0}');
+function save(){localStorage.wingStats=JSON.stringify(stats);localStorage.wingBest=best}
+function resize(){
+ const r=canvas.getBoundingClientRect(); dpr=Math.min(devicePixelRatio||1,2);
+ W=Math.max(320,r.width);H=Math.max(320,r.height);canvas.width=W*dpr;canvas.height=H*dpr;ctx.setTransform(dpr,0,0,dpr,0,0);
+}
+addEventListener("resize",resize); resize();
+
+const AudioCtx=window.AudioContext||window.webkitAudioContext; let ac=null;
+function beep(type="flap"){
+ if(!sound)return;
+ try{
+  ac ||= new AudioCtx(); if(ac.state==="suspended")ac.resume();
+  const o=ac.createOscillator(),g=ac.createGain(),now=ac.currentTime;
+  o.type=type==="crash"?"sawtooth":type==="score"?"square":"sine";
+  const f=type==="flap"?[280,420]:type==="score"?[520,760]:[170,70];
+  o.frequency.setValueAtTime(f[0],now);o.frequency.exponentialRampToValueAtTime(f[1],now+.12);
+  g.gain.setValueAtTime(.0001,now);g.gain.exponentialRampToValueAtTime(.07,now+.01);g.gain.exponentialRampToValueAtTime(.0001,now+.14);
+  o.connect(g).connect(ac.destination);o.start(now);o.stop(now+.16);
+ }catch(e){}
+}
+$("soundBtn").onclick=e=>{e.stopPropagation();sound=!sound;localStorage.wingSound=sound?"1":"0";$("soundBtn").textContent=sound?"🔊":"🔇";if(sound)beep()};
+$("pauseBtn").onclick=e=>{e.stopPropagation();togglePause()};
+function show(id){
+ ["menu","gameover","characters","achievements","paused"].forEach(x=>$(x).classList.add("hidden"));
+ $(id).classList.remove("hidden"); $("overlay").classList.remove("hidden");
+}
+function hideOverlay(){$("overlay").classList.add("hidden")}
+function start(){
+ score=0;flaps=0;level=1;levelName="TRAINING YARD";obstacles=[];particles=[];t=0;spawnTimer=.7;running=true;paused=false;
+ bird={x:W*.25,y:H*.5,vy:0,r:Math.max(15,Math.min(W,H)*.035),rot:0};
+ $("score").textContent=0;$("levelLabel").textContent=levelName;$("pauseBtn").classList.remove("hidden");hideOverlay();beep("flap");
+ last=performance.now();requestAnimationFrame(loop);
+}
+function togglePause(){
+ if(!running)return;paused=!paused;
+ if(paused){$("pauseBtn").classList.add("hidden");show("paused")}
+ else{$("pauseBtn").classList.remove("hidden");hideOverlay();last=performance.now();requestAnimationFrame(loop)}
+}
+function flap(){
+ if(!running){start();return}
+ if(paused)return;
+ bird.vy=-H*.52;bird.rot=-.42;flaps++;stats.flaps++;save();beep("flap");
+ for(let i=0;i<4;i++)particles.push({x:bird.x-8,y:bird.y+8,vx:-50-Math.random()*50,vy:(Math.random()-.5)*80,life:.4});
+}
+function levelFor(s){
+ if(s<10)return [1,"TRAINING YARD"];
+ if(s<25)return [2,"CITY CHAOS"];
+ if(s<45)return [3,"FARM DISASTER"];
+ if(s<70)return [4,"TRAFFIC TROUBLE"];
+ if(s<100)return [5,"SKY PANIC"];
+ return [6,"DUCK DIMENSION"];
+}
+function spawn(){
+ const gap=Math.max(H*.22,H*(.34-level*.018));
+ const margin=H*.09;
+ const minTop=margin,maxTop=H-gap-margin;
+ const top=minTop+Math.random()*(maxTop-minTop);
+ const width=Math.max(58,W*.075);
+ obstacles.push({x:W+30,w:width,top,gap,passed:false,kind:level});
+}
+function collideCircleRect(cx,cy,r,x,y,w,h){
+ const qx=Math.max(x,Math.min(cx,x+w)),qy=Math.max(y,Math.min(cy,y+h));
+ return (cx-qx)**2+(cy-qy)**2<r*r;
+}
+function crash(){
+ if(!running)return;
+ running=false;stats.crashes++;stats.lastScore=score;if(score>best)best=score;stats.best=best;save();beep("crash");
+ $("finalScore").textContent=score;$("bestScore").textContent=best;$("finalLevel").textContent=level;$("finalFlaps").textContent=flaps;
+ $("quip").textContent=quips[Math.floor(Math.random()*quips.length)];
+ $("gameoverTitle").textContent=score===0?"INSTANT REGRET!":"YOU GOT BONKED!";
+ $("pauseBtn").classList.add("hidden");updateAchievementUI();show("gameover");
+}
+function update(dt){
+ t+=dt;
+ const speed=W*(.38+level*.035);
+ bird.vy+=H*1.55*dt;bird.y+=bird.vy*dt;bird.rot=Math.min(.95,Math.max(-.55,bird.vy/(H*.75)));
+ spawnTimer-=dt;if(spawnTimer<=0){spawn();spawnTimer=Math.max(.82,1.35-level*.055)+Math.random()*.18}
+ for(const o of obstacles){
+  o.x-=speed*dt;
+  if(!o.passed&&o.x+o.w<bird.x){o.passed=true;score++;beep("score");$("score").textContent=score;
+   const [nl,nn]=levelFor(score);if(nl!==level){level=nl;levelName=nn;$("levelLabel").textContent=nn}
+   if(score>best){best=score;stats.best=best;save()}
+  }
+  if(collideCircleRect(bird.x,bird.y,bird.r,o.x,0,o.w,o.top)||
+     collideCircleRect(bird.x,bird.y,bird.r,o.x,o.top+o.gap,o.w,H-o.top-o.gap))crash();
+ }
+ obstacles=obstacles.filter(o=>o.x+o.w>-30);
+ if(bird.y-bird.r<0||bird.y+bird.r>H)crash();
+ for(const p of particles){p.x+=p.vx*dt;p.y+=p.vy*dt;p.life-=dt}
+ particles=particles.filter(p=>p.life>0);
+}
+function drawBackground(){
+ const g=ctx.createLinearGradient(0,0,0,H);g.addColorStop(0,level===6?"#c8a8ff":"#79d9ff");g.addColorStop(1,level>=5?"#f4d9ff":"#d9f7ff");ctx.fillStyle=g;ctx.fillRect(0,0,W,H);
+ clouds.forEach(c=>{c.x-=c.s*(1/60);if(c.x<-100)c.x=W+100;drawCloud(c.x,c.y,c.z)});
+ if(!clouds.length){for(let i=0;i<9;i++)clouds.push({x:Math.random()*W,y:40+Math.random()*H*.55,z:.6+Math.random()*.8,s:10+Math.random()*20})}
+ // distant scenery
+ if(level===2){ctx.fillStyle="rgba(70,100,125,.16)";for(let x=0;x<W;x+=70){let h=50+(x*13%100);ctx.fillRect(x,H-h,55,h)}}
+ if(level===3){ctx.fillStyle="rgba(80,130,60,.35)";ctx.fillRect(0,H*.82,W,H*.18);for(let x=30;x<W;x+=120){ctx.fillStyle="#e8a33a";ctx.fillRect(x,H*.64,70,H*.18);ctx.fillStyle="#8d4c2d";ctx.fillRect(x+32,H*.70,25,H*.12)}}
+ if(level===4){ctx.fillStyle="#596773";ctx.fillRect(0,H*.84,W,H*.16);ctx.strokeStyle="#f8dc64";ctx.lineWidth=5;for(let x=0;x<W;x+=90){ctx.beginPath();ctx.moveTo(x,H*.92);ctx.lineTo(x+45,H*.92);ctx.stroke()}}
+ if(level===6){ctx.fillStyle="rgba(255,100,220,.12)";ctx.fillRect(0,0,W,H)}
+}
+function drawCloud(x,y,z){ctx.fillStyle="rgba(255,255,255,.65)";ctx.beginPath();ctx.arc(x,y,22*z,0,7);ctx.arc(x+25*z,y-10*z,28*z,0,7);ctx.arc(x+55*z,y,20*z,0,7);ctx.fill()}
+function drawObstacle(o){
+ const pipe="#55a95c",edge="#347b42";ctx.fillStyle=pipe;ctx.strokeStyle=edge;ctx.lineWidth=3;
+ ctx.fillRect(o.x,0,o.w,o.top);ctx.strokeRect(o.x,0,o.w,o.top);
+ ctx.fillRect(o.x,o.top+o.gap,o.w,H);ctx.strokeRect(o.x,o.top+o.gap,o.w,H);
+ ctx.fillStyle="#6bc86c";ctx.fillRect(o.x-6,o.top-14,o.w+12,14);ctx.fillRect(o.x-6,o.top+o.gap,o.w+12,14);
+ if(level===2){ctx.fillStyle="#ffcf4a";ctx.fillRect(o.x+o.w*.15,o.top*.45, o.w*.7,8)}
+ if(level===4){ctx.fillStyle="#ef5350";ctx.fillRect(o.x+o.w*.2,o.top*.35,8,8)}
+}
+function drawBird(){
+ ctx.save();ctx.translate(bird.x,bird.y);ctx.rotate(bird.rot);
+ let body=character==="duck"?"#ffd447":character==="chicken"?"#fff":"#aeb8c2";
+ ctx.fillStyle=body;ctx.beginPath();ctx.ellipse(0,0,bird.r*1.15,bird.r*.9,0,0,7);ctx.fill();
+ ctx.fillStyle=character==="duck"?"#f08a28":"#7d8790";ctx.beginPath();ctx.ellipse(-5,7,bird.r*.55,bird.r*.22,.2,0,7);ctx.fill();
+ ctx.fillStyle="#fff";ctx.beginPath();ctx.arc(bird.r*.42,-bird.r*.32,bird.r*.28,0,7);ctx.fill();ctx.fillStyle="#222";ctx.beginPath();ctx.arc(bird.r*.5,-bird.r*.32,bird.r*.11,0,7);ctx.fill();
+ ctx.fillStyle=character==="duck"?"#f28b22":"#e98b37";ctx.beginPath();ctx.moveTo(bird.r*.95,0);ctx.lineTo(bird.r*1.55,5);ctx.lineTo(bird.r*.95,10);ctx.closePath();ctx.fill();
+ ctx.fillStyle="#343a40";ctx.beginPath();ctx.arc(-bird.r*.05,bird.r*.48,2.5,0,7);ctx.arc(bird.r*.22,bird.r*.48,2.5,0,7);ctx.fill();
+ ctx.restore();
+}
+function draw(){
+ drawBackground();
+ obstacles.forEach(drawObstacle);
+ particles.forEach(p=>{ctx.fillStyle=`rgba(255,255,255,${Math.max(0,p.life*2)})`;ctx.beginPath();ctx.arc(p.x,p.y,3+p.life*4,0,7);ctx.fill()});
+ if(bird)drawBird();
+}
+function loop(now){
+ if(!running||paused)return;const dt=Math.min(.032,(now-last)/1000);last=now;update(dt);draw();if(running)requestAnimationFrame(loop)
+}
+function updateAchievementUI(){
+ const data={...stats,best};$("achievementList").innerHTML=achievements.map(a=>`<div class="badge ${a[3](data)?"done":""}">${a[3](data)?"🏆":"🔒"} <b>${a[1]}</b><br>${a[2]}</div>`).join("");
+ $("duckBadge").className="badge "+(best>=20?"done":"");$("chickenBadge").className="badge "+(best>=50?"done":"");$("gooseBadge").className="badge "+(best>=100?"done":"");
+}
+$("playBtn").onclick=start;$("retryBtn").onclick=start;$("menuBtn").onclick=()=>show("menu");
+$("charsBtn").onclick=()=>{updateAchievementUI();show("characters")};
+$("achBtn").onclick=()=>{updateAchievementUI();show("achievements")};
+$("backChars").onclick=()=>show("menu");$("backAch").onclick=()=>show("menu");
+$("resumeBtn").onclick=togglePause;$("quitBtn").onclick=()=>{running=false;show("menu");$("pauseBtn").classList.add("hidden")};
+addEventListener("keydown",e=>{if(e.code==="Space"){e.preventDefault();flap()}if(e.code==="Escape"&&running)togglePause()},{passive:false});
+canvas.addEventListener("pointerdown",e=>{e.preventDefault();flap()},{passive:false});
+document.addEventListener("visibilitychange",()=>{if(document.hidden&&running&&!paused)togglePause()});
+$("soundBtn").textContent=sound?"🔊":"🔇";
+draw();
+})();
+</script>
+</body>
+</html>
